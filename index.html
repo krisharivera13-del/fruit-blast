@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Blast: 999 Level Quest</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <audio id="bg-music" loop>
+        <source src="bg-music.mp3.mp3.mp3" type="audio/mpeg">
+        <source src="bg-music.mp3.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="pause-screen" class="overlay" style="display:none;">
+        <h1>Game Paused</h1>
+        <div class="menu-buttons">
+            <button onclick="togglePause()" style="background: #4ecdc4;">Resume</button>
+            <button onclick="confirmRestart()" style="background: #ff9f1c;">Restart Level</button>
+            <button onclick="showLevelMenu()" style="background: #FFB6C1;">Level Select</button>
+        </div>
+    </div>
+
+    <div id="level-menu" class="overlay">
+        <h1>Fruit Blast</h1>
+        <p>Select an Unlocked Level</p>
+        <div id="level-list" class="level-grid"></div>
+        <button class="quit-btn" onclick="resetProgress()" style="margin-top:20px;">Reset All Progress</button>
+    </div>
+
+    <div id="game-over-screen" class="overlay" style="display:none;">
+        <h1 id="fail-title">Game Over</h1>
+        <p id="fail-reason"></p>
+        <div class="menu-buttons">
+            <button onclick="initLevel()" style="background: #4ecdc4;">Retry Level</button>
+            <button onclick="showLevelMenu()" style="background: #FFB6C1;">Level Select</button>
+        </div>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat">Level: <span id="current-level">1</span></div>
+        <div class="stat">Streak: <span id="streak-count">0</span> 🔥</div>
+        <div class="stat">Moves: <span id="moves">0</span> / <span id="max-moves">--</span></div>
+        <div class="stat">Time: <span id="timer">--</span></div>
+        <div class="menu-buttons-mini">
+            <button id="mute-btn" onclick="toggleMute()">🔊 Sound</button>
+            <button id="pause-btn" onclick="togglePause()">Pause</button>
+            <button onclick="confirmRestart()" style="background: #ff9f1c; color: white;">↺</button>
+            <button class="quit-btn" onclick="showLevelMenu()">Menu</button>
+        </div>
+    </div>
+
+    <section class="memory-game" id="game-board"></section>
+
+    <script src="script.js"></script>
+</body>
+</html>
