@@ -10,7 +10,15 @@
 
     <audio id="bg-music" loop>
         <source src="bg-music.mp3.mp3.mp3" type="audio/mpeg">
-        <source src="bg-music.mp3.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="click-sound" preload="auto">
+        <source src="click.mp3.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="gameover-sound" preload="auto">
+        <source src="gameover.mp3.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="victory-sound" preload="auto">
+        <source src="victory.mp3.mp3.mp3" type="audio/mpeg">
     </audio>
 
     <div id="pause-screen" class="overlay" style="display:none;">
@@ -46,7 +54,7 @@
         <div class="menu-buttons-mini">
             <button id="mute-btn" onclick="toggleMute()">🔊 Sound</button>
             <button id="pause-btn" onclick="togglePause()">Pause</button>
-            <button onclick="confirmRestart()" style="background: #ff9f1c; color: white;">↺</button>
+            <button onclick="confirmRestart()" style="background: #ff9f1c; color: white;" title="Restart Level">↺</button>
             <button class="quit-btn" onclick="showLevelMenu()">Menu</button>
         </div>
     </div>
