@@ -1,66 +1,82 @@
 const gameBoard = document.getElementById('game-board');
-const movesDisplay = document.getElementById('moves');
-const maxMovesDisplay = document.getElementById('max-moves');
-const timerDisplay = document.getElementById('timer');
-const levelDisplay = document.getElementById('current-level');
-const streakDisplay = document.getElementById('streak-count');
-
 const bgMusic = document.getElementById('bg-music');
 const clickSound = document.getElementById('click-sound');
-const gameoverSound = document.getElementById('gameover-sound');
 const victorySound = document.getElementById('victory-sound');
+const gameoverSound = document.getElementById('gameover-sound');
+const timerDisplay = document.getElementById('timer');
+const movesDisplay = document.getElementById('moves');
+const moveLimitDisplay = document.getElementById('move-limit');
+const streakContainer = document.getElementById('streak-container');
+const streakCountDisplay = document.getElementById('streak-count');
 
-const fruitIcons = ['🍎','🍌','🍊','🍇','🥝','🍒','🍓','🍉','🍍','🥭','🍑','🍐','🍏','🍋','🫐','🍈','🥥','🥑','🍆','🥕','🌽','🌶️','🥦','🍄','🥜','🌰','🍠','🫛','🥬','🍅'];
-const themes = ["#FFB6C1", "#4ecdc4", "#ff6b6b", "#ffe66d", "#ff9f1c", "#2ec4b6"];
+let level = 1, moves = 0, moveLimit = 0, matchedPairs = 0, timeLeft = 0, timerId = null, streak = 0;
+let firstCard, secondCard, hasFlippedCard = false, lockBoard = false, isMuted = false, isPaused = false;
 
-let level = parseInt(localStorage.getItem('fruitLevel')) || 1;
-let maxUnlockedLevel = parseInt(localStorage.getItem('maxFruitLevel')) || 1;
-let firstCard, secondCard;
-let hasFlippedCard = false, lockBoard = false, isPaused = false, isMuted = false;
-let moves = 0, maxMoves = 0, timeLeft = 0, matchedPairs = 0, totalPairsNeeded = 0, currentStreak = 0;
-let timerInterval = null;
-
-function playClick() { 
-    if (!isMuted) { 
-        clickSound.currentTime = 0; 
-        clickSound.play().catch(()=>{}); 
-    } 
+// Universal Burst Effect (Hearts and Fire)
+function createBurst(x, y, emoji, className) {
+    for (let i = 0; i < 6; i++) {
+        const p = document.createElement('div');
+        p.innerHTML = emoji; p.className = className;
+        const tx = (Math.random() - 0.5) * 200 + 'px';
+        const ty = (Math.random() - 0.5) * 200 + 'px';
+        p.style.setProperty('--tx', tx); p.style.setProperty('--ty', ty);
+        p.style.left = x + 'px'; p.style.top = y + 'px';
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 800);
+    }
 }
 
+document.addEventListener('click', (e) => createBurst(e.clientX, e.clientY, '💖', 'click-heart'));
+
 function initLevel() {
+    clearInterval(timerId);
+    isPaused = false; streak = 0;
+    updateStreakDisplay();
     document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none');
     gameBoard.innerHTML = '';
-    moves = 0; matchedPairs = 0; currentStreak = 0; lockBoard = false;
-    hasFlippedCard = false; firstCard = null; secondCard = null;
-    movesDisplay.innerText = 0; streakDisplay.innerText = 0;
-    clearInterval(timerInterval); timerInterval = null;
+    moves = 0; matchedPairs = 0; lockBoard = false; hasFlippedCard = false;
+    
+    movesDisplay.innerText = moves;
+    document.getElementById('current-level').innerText = level;
 
-    levelDisplay.innerText = level;
-    document.documentElement.style.setProperty('--card-color', themes[level % themes.length]);
-
-    // Scaling Logic: 2x2 up to 8x8
-    let sideLength = level <= 2 ? 2 : (level <= 5 ? 4 : 6); 
+    // Grid Size: 2x2 for levels 1-2, 4x4 for others
+    let sideLength = level <= 2 ? 2 : 4; 
     document.documentElement.style.setProperty('--grid-cols', sideLength);
     
-    let cardCount = sideLength * sideLength;
-    totalPairsNeeded = cardCount / 2;
-    timeLeft = 25 + (totalPairsNeeded * 6);
-    maxMoves = Math.floor(totalPairsNeeded * 3);
-
-    maxMovesDisplay.innerText = maxMoves;
+    // Limits
+    moveLimit = sideLength === 2 ? 6 : 25;
+    moveLimitDisplay.innerText = moveLimit;
+    timeLeft = sideLength === 2 ? 30 : 60;
+    
     updateTimerDisplay();
-    generateCards(cardCount);
+    startTimer();
+    generateCards(sideLength * sideLength);
+}
+
+function startTimer() {
+    timerId = setInterval(() => {
+        if (!isPaused) {
+            timeLeft--;
+            updateTimerDisplay();
+            if (timeLeft <= 0) gameOver("Time's Up!");
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    timerDisplay.innerText = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
 function generateCards(count) {
-    let icons = [];
-    for(let i=0; i < (count/2); i++) icons.push(fruitIcons[i % fruitIcons.length]);
-    const gameSet = [...icons, ...icons].sort(() => Math.random() - 0.5);
+    const fruits = ['🍓', '🍑', '🍒', '🍉', '🍍', '🍎', '🍇', '🥝'].slice(0, count/2);
+    const gameSet = [...fruits, ...fruits].sort(() => Math.random() - 0.5);
     gameSet.forEach(icon => {
         const card = document.createElement('div');
         card.className = 'memory-card';
         card.dataset.fruit = icon;
-        card.innerHTML = `<div class="front-face">${icon}</div><div class="back-face">?</div>`;
+        card.innerHTML = `<div class="front-face">${icon}</div><div class="back-face"></div>`;
         card.addEventListener('click', flipCard);
         gameBoard.appendChild(card);
     });
@@ -68,12 +84,8 @@ function generateCards(count) {
 
 function flipCard() {
     if (lockBoard || this === firstCard || isPaused) return;
-    playClick();
-    if (!timerInterval) { 
-        if (!isMuted) bgMusic.play().catch(()=>{}); 
-        startTimer(); 
-    }
-
+    if (!isMuted) { clickSound.currentTime = 0; clickSound.play().catch(()=>{}); }
+    if (bgMusic.paused && !isMuted) bgMusic.play();
     this.classList.add('flip');
     if (!hasFlippedCard) { hasFlippedCard = true; firstCard = this; return; }
     secondCard = this;
@@ -83,104 +95,89 @@ function flipCard() {
 }
 
 function checkForMatch() {
-    if (firstCard.dataset.fruit === secondCard.dataset.fruit) {
+    const isMatch = firstCard.dataset.fruit === secondCard.dataset.fruit;
+    if (isMatch) {
         matchedPairs++;
-        currentStreak++;
-        streakDisplay.innerText = currentStreak;
-        firstCard.classList.add('matched');
-        secondCard.classList.add('matched');
+        streak++;
+        if (streak >= 2) {
+            updateStreakDisplay();
+            const rect = secondCard.getBoundingClientRect();
+            createBurst(rect.left + rect.width/2, rect.top + rect.height/2, '🔥', 'fire-particle');
+        }
         resetBoard();
-        if (matchedPairs === totalPairsNeeded) nextLevel();
+        let cols = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--grid-cols'));
+        if (matchedPairs === (cols * cols) / 2) nextLevel();
     } else {
-        currentStreak = 0; streakDisplay.innerText = 0;
+        streak = 0;
+        updateStreakDisplay();
+        if (moves >= moveLimit) {
+            setTimeout(() => gameOver("Out of Moves!"), 500);
+            return;
+        }
         lockBoard = true;
-        gameBoard.classList.add('shake');
         setTimeout(() => {
             firstCard.classList.remove('flip');
             secondCard.classList.remove('flip');
-            gameBoard.classList.remove('shake');
             resetBoard();
         }, 800);
     }
-    if (moves >= maxMoves && matchedPairs < totalPairsNeeded) gameOver("Out of moves!");
+}
+
+function updateStreakDisplay() {
+    if (streak >= 2) {
+        streakContainer.style.display = 'block';
+        streakCountDisplay.innerText = streak;
+        movesDisplay.classList.add('streak-active');
+    } else {
+        streakContainer.style.display = 'none';
+        movesDisplay.classList.remove('streak-active');
+    }
 }
 
 function resetBoard() { [hasFlippedCard, lockBoard] = [false, false]; [firstCard, secondCard] = [null, null]; }
 
-function startTimer() {
-    timerInterval = setInterval(() => {
-        if (!isPaused) {
-            timeLeft--;
-            updateTimerDisplay();
-            if (timeLeft <= 0) gameOver("Time is up!");
-        }
-    }, 1000);
-}
-
-function updateTimerDisplay() {
-    let m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-    let s = (timeLeft % 60).toString().padStart(2, '0');
-    timerDisplay.innerText = `${m}:${s}`;
-}
-
 function nextLevel() {
-    clearInterval(timerInterval);
+    clearInterval(timerId);
+    document.getElementById('victory-overlay').style.display = 'flex';
     bgMusic.pause();
-    if (!isMuted) {
-        victorySound.currentTime = 0;
-        victorySound.play().catch(()=>{});
-    }
-    setTimeout(() => {
-        level++;
-        localStorage.setItem('fruitLevel', level);
-        if (level > maxUnlockedLevel) localStorage.setItem('maxFruitLevel', level);
-        if (!isMuted) bgMusic.play();
-        initLevel();
-    }, 1800);
+    if (!isMuted) victorySound.play();
+    setTimeout(() => { level++; initLevel(); if (!isMuted) bgMusic.play(); }, 2500);
 }
 
 function gameOver(reason) {
-    clearInterval(timerInterval);
+    clearInterval(timerId);
     bgMusic.pause();
-    if (!isMuted) {
-        gameoverSound.currentTime = 0;
-        gameoverSound.play().catch(()=>{});
-    }
-    document.getElementById('fail-reason').innerText = reason;
+    if (!isMuted) gameoverSound.play();
+    document.getElementById('game-over-text').innerText = `🎀 ${reason} 🎀`;
     document.getElementById('game-over-screen').style.display = 'flex';
-    document.body.classList.add('shake');
-    setTimeout(() => document.body.classList.remove('shake'), 400);
 }
 
-function togglePause() { 
-    playClick(); 
-    isPaused = !isPaused; 
-    if (isPaused) bgMusic.pause(); else if (!isMuted && timerInterval) bgMusic.play();
-    document.getElementById('pause-screen').style.display = isPaused ? 'flex' : 'none';
-}
-
-function toggleMute() { 
-    playClick(); 
-    isMuted = !isMuted; 
-    bgMusic.muted = isMuted; 
-    document.getElementById('mute-btn').innerText = isMuted ? "🔇 Muted" : "🔊 Sound"; 
+function togglePause() {
+    isPaused = !isPaused;
+    document.getElementById('pause-overlay').style.display = isPaused ? 'flex' : 'none';
+    document.getElementById('pause-btn').innerText = isPaused ? '▶' : '⏸';
+    if (!isPaused) document.getElementById('level-menu').style.display = 'none';
 }
 
 function showLevelMenu() {
-    playClick();
+    isPaused = true;
+    document.getElementById('pause-overlay').style.display = 'none';
     document.getElementById('level-menu').style.display = 'flex';
     const list = document.getElementById('level-list');
     list.innerHTML = '';
-    for(let i=1; i<=maxUnlockedLevel; i++) {
+    for(let i=1; i<=10; i++) {
         const b = document.createElement('button');
-        b.innerText = i;
+        b.innerText = i; b.className = 'nav-btn';
         b.onclick = () => { level = i; initLevel(); };
         list.appendChild(b);
     }
 }
 
-function confirmRestart() { if(confirm("Restart level?")) { playClick(); initLevel(); } }
+function closeMenu() {
+    document.getElementById('level-menu').style.display = 'none';
+    document.getElementById('pause-overlay').style.display = 'flex';
+}
 
-function resetProgress() { if(confirm("Reset all progress?")) { localStorage.clear(); location.reload(); } }
+function toggleMute() { isMuted = !isMuted; bgMusic.muted = isMuted; }
 
 initLevel();
