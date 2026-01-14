@@ -12,7 +12,6 @@ const streakCountDisplay = document.getElementById('streak-count');
 let level = 1, moves = 0, moveLimit = 0, matchedPairs = 0, timeLeft = 0, timerId = null, streak = 0;
 let firstCard, secondCard, hasFlippedCard = false, lockBoard = false, isMuted = false, isPaused = false;
 
-// Universal Burst Effect (Hearts and Fire)
 function createBurst(x, y, emoji, className) {
     for (let i = 0; i < 6; i++) {
         const p = document.createElement('div');
@@ -28,27 +27,33 @@ function createBurst(x, y, emoji, className) {
 
 document.addEventListener('click', (e) => createBurst(e.clientX, e.clientY, '💖', 'click-heart'));
 
+function startGame() {
+    document.getElementById('start-screen').style.display = 'none';
+    if (!isMuted) bgMusic.play().catch(() => {});
+    level = 1;
+    initLevel();
+}
+
 function initLevel() {
     clearInterval(timerId);
     isPaused = false; streak = 0;
     updateStreakDisplay();
-    document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none');
+    document.querySelectorAll('.overlay').forEach(o => { if(o.id !== 'start-screen') o.style.display = 'none'; });
+    
     gameBoard.innerHTML = '';
     moves = 0; matchedPairs = 0; lockBoard = false; hasFlippedCard = false;
-    
     movesDisplay.innerText = moves;
     document.getElementById('current-level').innerText = level;
 
-    // Grid Size: 2x2 for levels 1-2, 4x4 for others
     let sideLength = level <= 2 ? 2 : 4; 
     document.documentElement.style.setProperty('--grid-cols', sideLength);
     
-    // Limits
     moveLimit = sideLength === 2 ? 6 : 25;
     moveLimitDisplay.innerText = moveLimit;
     timeLeft = sideLength === 2 ? 30 : 60;
     
     updateTimerDisplay();
+    if (!isMuted && bgMusic.paused) bgMusic.play().catch(() => {});
     startTimer();
     generateCards(sideLength * sideLength);
 }
@@ -84,10 +89,12 @@ function generateCards(count) {
 
 function flipCard() {
     if (lockBoard || this === firstCard || isPaused) return;
+    if (!isMuted && bgMusic.paused) bgMusic.play().catch(() => {});
     if (!isMuted) { clickSound.currentTime = 0; clickSound.play().catch(()=>{}); }
-    if (bgMusic.paused && !isMuted) bgMusic.play();
+    
     this.classList.add('flip');
     if (!hasFlippedCard) { hasFlippedCard = true; firstCard = this; return; }
+    
     secondCard = this;
     moves++;
     movesDisplay.innerText = moves;
@@ -139,14 +146,12 @@ function resetBoard() { [hasFlippedCard, lockBoard] = [false, false]; [firstCard
 function nextLevel() {
     clearInterval(timerId);
     document.getElementById('victory-overlay').style.display = 'flex';
-    bgMusic.pause();
     if (!isMuted) victorySound.play();
-    setTimeout(() => { level++; initLevel(); if (!isMuted) bgMusic.play(); }, 2500);
+    setTimeout(() => { level++; initLevel(); }, 2500);
 }
 
 function gameOver(reason) {
     clearInterval(timerId);
-    bgMusic.pause();
     if (!isMuted) gameoverSound.play();
     document.getElementById('game-over-text').innerText = `🎀 ${reason} 🎀`;
     document.getElementById('game-over-screen').style.display = 'flex';
@@ -168,6 +173,7 @@ function showLevelMenu() {
     for(let i=1; i<=10; i++) {
         const b = document.createElement('button');
         b.innerText = i; b.className = 'nav-btn';
+        b.style.padding = "15px";
         b.onclick = () => { level = i; initLevel(); };
         list.appendChild(b);
     }
@@ -179,5 +185,3 @@ function closeMenu() {
 }
 
 function toggleMute() { isMuted = !isMuted; bgMusic.muted = isMuted; }
-
-initLevel();

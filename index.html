@@ -13,6 +13,14 @@
     <audio id="gameover-sound" preload="auto"><source src="gameover.mp3" type="audio/mpeg"></audio>
     <audio id="victory-sound" preload="auto"><source src="victory.mp3" type="audio/mpeg"></audio>
 
+    <div id="start-screen" class="overlay">
+        <div class="victory-card">
+            <h1 class="victory-text">🌸 Fruit Blast 🌸</h1>
+            <p style="margin-bottom: 20px;">Coquette Edition</p>
+            <button onclick="startGame()" class="pink-btn">Start Game 🎀</button>
+        </div>
+    </div>
+
     <div class="stats-container">
         <div class="stat-group">
             <div class="stat">Lv <span id="current-level">1</span></div>
@@ -30,22 +38,22 @@
 
     <section class="memory-game" id="game-board"></section>
 
-    <div id="pause-overlay" class="overlay" style="display:none;">
-        <div class="victory-card">
-            <h1 class="victory-text">🌸 Paused 🌸</h1>
-            <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                <button onclick="togglePause()" class="pink-btn">Resume Game</button>
-                <button onclick="showLevelMenu()" class="pink-btn sky-btn">Level Menu</button>
-                <button onclick="initLevel()" class="pink-btn sky-btn">Restart Level</button>
-            </div>
-        </div>
-    </div>
-
     <div id="level-menu" class="overlay" style="display:none;">
         <div class="victory-card">
             <h1 class="victory-text">🌸 Select Level 🌸</h1>
             <div id="level-list" class="level-grid"></div>
             <button onclick="closeMenu()" class="pink-btn" style="margin-top: 20px;">Back</button>
+        </div>
+    </div>
+
+    <div id="pause-overlay" class="overlay" style="display:none;">
+        <div class="victory-card">
+            <h1 class="victory-text">🌸 Paused 🌸</h1>
+            <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                <button onclick="togglePause()" class="pink-btn">Resume</button>
+                <button onclick="showLevelMenu()" class="pink-btn sky-btn">Level Menu</button>
+                <button onclick="initLevel()" class="pink-btn sky-btn">Restart</button>
+            </div>
         </div>
     </div>
 
