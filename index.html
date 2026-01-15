@@ -1,76 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌸 Fruit Blast: Coquette Edition 🌸</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fruit Blast</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <audio id="bg-music" loop><source src="bg-music.mp3" type="audio/mpeg"></audio>
-    <audio id="click-sound" preload="auto"><source src="click.mp3" type="audio/mpeg"></audio>
-    <audio id="gameover-sound" preload="auto"><source src="gameover.mp3" type="audio/mpeg"></audio>
-    <audio id="victory-sound" preload="auto"><source src="victory.mp3" type="audio/mpeg"></audio>
+<audio id="bg-music" loop src="bg-music.mp3"></audio>
+<audio id="click-sound" src="click.mp3"></audio>
+<audio id="victory-sound" src="victory.mp3"></audio>
+<audio id="gameover-sound" src="gameover.mp3"></audio>
 
-    <div id="start-screen" class="overlay">
-        <div class="victory-card">
-            <h1 class="victory-text">🌸 Fruit Blast 🌸</h1>
-            <p style="margin-bottom: 20px;">Coquette Edition</p>
-            <button onclick="startGame()" class="pink-btn">Start Game 🎀</button>
-        </div>
+<!-- Start Screen -->
+<div id="start-screen" class="overlay">
+  <div class="victory-card">
+    <h1 class="victory-text">🌸 Fruit Blast 🌸</h1>
+    <p>Coquette Edition</p>
+    <button onclick="showStartLevels()" class="pink-btn">Start Game</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-container">
+  <div class="stat-group">
+    <div>Lv <span id="current-level">1</span></div>
+    <div>⏱ <span id="timer">00:00</span></div>
+    <div>Moves: <span id="moves">0</span>/<span id="move-limit">0</span></div>
+    <div>💰 Coins: <span id="coins">0</span></div>
+    <div id="streak-container" style="display:none">🔥 <span id="streak-count">0</span></div>
+  </div>
+  <div class="nav-controls">
+    <button onclick="togglePause()" class="nav-btn" id="pause-btn">⏸</button>
+    <button onclick="initLevel()" class="nav-btn">↺</button>
+    <button id="mute-btn" onclick="toggleMute()" class="nav-btn">🔊</button>
+  </div>
+</div>
+
+<!-- Game Board -->
+<section class="memory-game" id="game-board"></section>
+
+<!-- Level Menu -->
+<div id="level-menu" class="overlay" style="display:none;">
+  <div class="victory-card scrollable-menu">
+    <h1 class="victory-text">Select Level</h1>
+    <div id="level-list" class="level-grid"></div>
+  </div>
+</div>
+
+<!-- Pause Menu -->
+<div id="pause-overlay" class="overlay" style="display:none;">
+  <div class="victory-card">
+    <h1 class="victory-text">Paused</h1>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+      <button onclick="togglePause()" class="pink-btn">Resume</button>
+      <button onclick="initLevel()" class="pink-btn sky-btn">Restart</button>
+      <button onclick="showShop()" class="pink-btn sky-btn">Shop</button>
     </div>
+  </div>
+</div>
 
-    <div class="stats-container">
-        <div class="stat-group">
-            <div class="stat">Lv <span id="current-level">1</span></div>
-            <div class="stat">⏱ <span id="timer">00:00</span></div>
-            <div class="stat">Moves: <span id="moves">0</span>/<span id="move-limit">0</span></div>
-            <div class="stat" id="streak-container" style="display:none">🔥 <span id="streak-count">0</span></div>
-        </div>
-        <div class="nav-controls">
-            <button onclick="togglePause()" class="nav-btn" id="pause-btn">⏸</button>
-            <button onclick="initLevel()" class="nav-btn">↺</button>
-            <button onclick="showLevelMenu()" class="nav-btn">Menu</button>
-            <button id="mute-btn" onclick="toggleMute()" class="nav-btn">🔊</button>
-        </div>
-    </div>
+<!-- Shop -->
+<div id="shop-overlay" class="overlay" style="display:none;">
+  <div class="victory-card">
+    <h1 class="victory-text">SHOP</h1>
+    <div id="shop-list" class="level-grid"></div>
+    <button onclick="closeShop()" class="pink-btn">Back</button>
+  </div>
+</div>
 
-    <section class="memory-game" id="game-board"></section>
+<!-- Victory Overlay -->
+<div id="victory-overlay" class="overlay" style="display:none;">
+  <div class="victory-card">
+    <h1 class="victory-text">Level Cleared!</h1>
+  </div>
+</div>
 
-    <div id="level-menu" class="overlay" style="display:none;">
-        <div class="victory-card">
-            <h1 class="victory-text">🌸 Select Level 🌸</h1>
-            <div id="level-list" class="level-grid"></div>
-            <button onclick="closeMenu()" class="pink-btn" style="margin-top: 20px;">Back</button>
-        </div>
-    </div>
+<!-- Game Over -->
+<div id="game-over-screen" class="overlay" style="display:none;">
+  <div class="victory-card">
+    <h1 id="game-over-text" class="victory-text"></h1>
+    <button onclick="tryAgain()" class="pink-btn">Try Again</button>
+  </div>
+</div>
 
-    <div id="pause-overlay" class="overlay" style="display:none;">
-        <div class="victory-card">
-            <h1 class="victory-text">🌸 Paused 🌸</h1>
-            <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
-                <button onclick="togglePause()" class="pink-btn">Resume</button>
-                <button onclick="showLevelMenu()" class="pink-btn sky-btn">Level Menu</button>
-                <button onclick="initLevel()" class="pink-btn sky-btn">Restart</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="victory-overlay" class="overlay" style="display:none;">
-        <div class="victory-card">
-            <h1 class="victory-text">✨ Level Complete! ✨</h1>
-            <p>You're doing amazing, gorgeous! 💖</p>
-        </div>
-    </div>
-
-    <div id="game-over-screen" class="overlay" style="display:none;">
-        <div class="victory-card">
-            <h1 id="game-over-text" class="victory-text">🎀 Game Over 🎀</h1>
-            <button onclick="initLevel()" class="pink-btn">Try Again</button>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

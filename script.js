@@ -1,187 +1,219 @@
-const gameBoard = document.getElementById('game-board');
-const bgMusic = document.getElementById('bg-music');
-const clickSound = document.getElementById('click-sound');
-const victorySound = document.getElementById('victory-sound');
-const gameoverSound = document.getElementById('gameover-sound');
-const timerDisplay = document.getElementById('timer');
-const movesDisplay = document.getElementById('moves');
-const moveLimitDisplay = document.getElementById('move-limit');
-const streakContainer = document.getElementById('streak-container');
-const streakCountDisplay = document.getElementById('streak-count');
+const gameBoard=document.getElementById('game-board');
+const timerDisplay=document.getElementById('timer');
+const movesDisplay=document.getElementById('moves');
+const moveLimitDisplay=document.getElementById('move-limit');
+const streakContainer=document.getElementById('streak-container');
+const streakCountDisplay=document.getElementById('streak-count');
+const coinsDisplay=document.getElementById('coins');
+const bgMusic=document.getElementById('bg-music');
+const clickSound=document.getElementById('click-sound');
+const victorySound=document.getElementById('victory-sound');
+const gameoverSound=document.getElementById('gameover-sound');
 
-let level = 1, moves = 0, moveLimit = 0, matchedPairs = 0, timeLeft = 0, timerId = null, streak = 0;
-let firstCard, secondCard, hasFlippedCard = false, lockBoard = false, isMuted = false, isPaused = false;
+let level=1,moves=0,moveLimit=0,matchedPairs=0,timeLeft=0,timerId=null,streak=0,coins=0;
+let firstCard,secondCard,hasFlippedCard=false,lockBoard=false,isMuted=false,isPaused=false;
+let currentTheme="fruits";
+let purchasedThemes=['fruits'];
 
-function createBurst(x, y, emoji, className) {
-    for (let i = 0; i < 6; i++) {
-        const p = document.createElement('div');
-        p.innerHTML = emoji; p.className = className;
-        const tx = (Math.random() - 0.5) * 200 + 'px';
-        const ty = (Math.random() - 0.5) * 200 + 'px';
-        p.style.setProperty('--tx', tx); p.style.setProperty('--ty', ty);
-        p.style.left = x + 'px'; p.style.top = y + 'px';
-        document.body.appendChild(p);
-        setTimeout(() => p.remove(), 800);
-    }
+// Expanded fruits pool for unique pairs
+const fruits=[
+  '🍓','🍑','🍒','🍉','🍍','🍎','🍇','🥝',
+  '🥭','🍐','🍋','🍌','🥥','🥑','🍈','🍊',
+  '🍏','🥝','🥑','🍒','🍉','🍎','🍍','🍇'
+];
+
+const themeNames={
+  red:"RED THEME", orange:"ORANGE THEME", yellow:"YELLOW THEME", green:"GREEN THEME",
+  blue:"BLUE THEME", skyblue:"SKYBLUE THEME", purple:"PURPLE THEME",
+  hellokitty:"HELLO KITTY THEME", sanrio:"SANRIO THEME"
+};
+
+const themeCosts={red:50,orange:50,yellow:50,green:50,blue:50,skyblue:50,purple:50,hellokitty:200,sanrio:250};
+
+const themeColors={
+  fruits:{back:'#ff80ab',border:'#b3e5fc',button:'#ff80ab',text:'#fff'},
+  red:{back:'#ff5252',border:'#ffcdd2',button:'#f44336',text:'#fff'},
+  orange:{back:'#ff9800',border:'#ffe0b2',button:'#fb8c00',text:'#fff'},
+  yellow:{back:'#ffeb3b',border:'#fff9c4',button:'#fbc02d',text:'#ad1457'},
+  green:{back:'#4caf50',border:'#c8e6c9',button:'#43a047',text:'#fff'},
+  blue:{back:'#2196f3',border:'#bbdefb',button:'#1e88e5',text:'#fff'},
+  skyblue:{back:'#81d4fa',border:'#e1f5fe',button:'#4fc3f7',text:'#ad1457'},
+  purple:{back:'#9c27b0',border:'#e1bee7',button:'#8e24aa',text:'#fff'},
+  hellokitty:{back:'#ffb6c1',border:'#fff0f5',button:'#ff69b4',text:'#fff'},
+  sanrio:{back:'#b39ddb',border:'#ede7f6',button:'#9575cd',text:'#fff'}
+};
+
+function applyTheme(){
+  const t=themeColors[currentTheme]||themeColors.fruits;
+  document.documentElement.style.setProperty('--card-back',t.back);
+  document.documentElement.style.setProperty('--card-border',t.border);
+  document.documentElement.style.setProperty('--btn-color',t.button);
+  document.documentElement.style.setProperty('--btn-text',t.text);
 }
 
-document.addEventListener('click', (e) => createBurst(e.clientX, e.clientY, '💖', 'click-heart'));
+// Start screen → Level menu
+function showStartLevels(){
+  document.getElementById('start-screen').style.display='none';
+  const menu=document.getElementById('level-menu');
+  menu.style.display='flex';
+  const list=document.getElementById('level-list');
+  list.innerHTML='';
+  for(let i=1;i<=50;i++){
+    const b=document.createElement('button');
+    b.className='nav-btn';
+    b.innerText=i;
+    b.onclick=()=>{level=i;menu.style.display='none';startGame();}
+    list.appendChild(b);
+  }
+}
 
-function startGame() {
-    document.getElementById('start-screen').style.display = 'none';
-    if (!isMuted) bgMusic.play().catch(() => {});
-    level = 1;
+function startGame(){applyTheme();initLevel();}
+
+function initLevel(){
+  applyTheme();
+  clearInterval(timerId); isPaused=false; streak=0;
+  gameBoard.innerHTML=''; moves=0; matchedPairs=0; lockBoard=false; hasFlippedCard=false;
+  movesDisplay.innerText=moves; document.getElementById('current-level').innerText=level;
+
+  // Determine grid size
+  let sideLength;
+  if(level===1) sideLength=2;
+  else if(level===2) sideLength=4;
+  else if(level===3) sideLength=8;
+  else sideLength=10;
+  document.documentElement.style.setProperty('--grid-cols',sideLength);
+
+  moveLimit=sideLength*sideLength+10; moveLimitDisplay.innerText=moveLimit;
+  timeLeft=50+sideLength*5; timerDisplay.innerText=timeLeft;
+
+  startTimer(); generateCards(sideLength*sideLength);
+}
+
+// Timer
+function startTimer(){
+  timerId=setInterval(()=>{
+    if(!isPaused){timeLeft--; timerDisplay.innerText=timeLeft;
+      if(timeLeft<=0) gameOver("Time's Up!");
+    }
+  },1000);
+}
+
+// Generate cards with unique pairs
+function generateCards(count){
+  const pairCount = Math.floor(count/2);
+  const pool = fruits.slice(0,pairCount); // pick unique fruits for pairs
+  let cards = [...pool, ...pool]; // duplicate each for a pair
+  cards.sort(()=>Math.random()-0.5); // shuffle
+
+  gameBoard.innerHTML='';
+  cards.forEach(icon=>{
+    const card=document.createElement('div');
+    card.className='memory-card';
+    card.dataset.fruit=icon;
+    card.innerHTML=`<div class="front-face">${icon}</div><div class="back-face"></div>`;
+    card.addEventListener('click',flipCard);
+    gameBoard.appendChild(card);
+  });
+}
+
+// Flip card
+function flipCard(){
+  if(lockBoard||this===firstCard||isPaused) return;
+  this.classList.add('flip');
+  if(!hasFlippedCard){hasFlippedCard=true; firstCard=this; return;}
+  secondCard=this; moves++; movesDisplay.innerText=moves; checkForMatch();
+}
+
+// Check match
+function checkForMatch(){
+  if(firstCard.dataset.fruit===secondCard.dataset.fruit){
+    matchedPairs++;
+    resetBoard();
+    if(matchedPairs>=gameBoard.children.length/2) nextLevel();
+  } else{
+    lockBoard=true;
+    setTimeout(()=>{firstCard.classList.remove('flip'); secondCard.classList.remove('flip'); resetBoard();},800);
+  }
+}
+
+function resetBoard(){[hasFlippedCard,lockBoard]=[false,false]; [firstCard,secondCard]=[null,null];}
+
+// Next level
+function nextLevel(){
+  clearInterval(timerId); coins+=10; updateCoins();
+  document.getElementById('victory-overlay').style.display='flex';
+  setTimeout(()=>{document.getElementById('victory-overlay').style.display='none'; level++; initLevel();},2000);
+}
+
+// Game over
+function gameOver(reason){
+  clearInterval(timerId);
+  document.getElementById('game-over-text').innerText=reason;
+  document.getElementById('game-over-screen').style.display='flex';
+}
+
+// Try again
+function tryAgain(){
+  document.getElementById('game-over-screen').style.display='none';
+  initLevel();
+}
+
+// Pause
+function togglePause(){
+  isPaused=!isPaused;
+  document.getElementById('pause-overlay').style.display=isPaused?'flex':'none';
+  document.getElementById('pause-btn').innerText=isPaused?'▶':'⏸';
+}
+
+// Mute
+function toggleMute(){
+  isMuted=!isMuted;
+  bgMusic.muted=isMuted;
+  document.getElementById("mute-btn").innerText=isMuted?"🔇":"🔊";
+}
+
+// Shop
+function showShop(){
+  const shopOverlay=document.getElementById('shop-overlay'); 
+  shopOverlay.style.display='flex';
+  const shopList=document.getElementById('shop-list'); 
+  shopList.innerHTML='';
+  for(let key in themeNames){
+    const btn=document.createElement('button'); 
+    btn.className='nav-btn'; 
+    btn.style.padding='12px';
+
+    if(purchasedThemes.includes(key)){
+      btn.innerText = `${themeNames[key]} - Unlocked`;
+      btn.disabled = true;
+      btn.style.opacity = 0.6;
+      btn.style.cursor = 'default';
+    } else {
+      btn.innerText=`${themeNames[key]} - ${themeCosts[key]} COINS`;
+      btn.onclick=()=>buyTheme(key,themeCosts[key]);
+    }
+
+    shopList.appendChild(btn);
+  }
+}
+
+function closeShop(){document.getElementById('shop-overlay').style.display='none';}
+
+// Buy theme
+function buyTheme(theme, cost){
+  if(purchasedThemes.includes(theme)){
+    alert(`${themeNames[theme]} is already unlocked!`);
+    return;
+  }
+  if(coins>=cost){
+    coins-=cost;
+    purchasedThemes.push(theme);
+    updateCoins();
+    currentTheme=theme;
+    applyTheme();
     initLevel();
+    alert(`${themeNames[theme]} unlocked!`);
+  } else alert("Not enough coins!");
 }
 
-function initLevel() {
-    clearInterval(timerId);
-    isPaused = false; streak = 0;
-    updateStreakDisplay();
-    document.querySelectorAll('.overlay').forEach(o => { if(o.id !== 'start-screen') o.style.display = 'none'; });
-    
-    gameBoard.innerHTML = '';
-    moves = 0; matchedPairs = 0; lockBoard = false; hasFlippedCard = false;
-    movesDisplay.innerText = moves;
-    document.getElementById('current-level').innerText = level;
-
-    let sideLength = level <= 2 ? 2 : 4; 
-    document.documentElement.style.setProperty('--grid-cols', sideLength);
-    
-    moveLimit = sideLength === 2 ? 6 : 25;
-    moveLimitDisplay.innerText = moveLimit;
-    timeLeft = sideLength === 2 ? 30 : 60;
-    
-    updateTimerDisplay();
-    if (!isMuted && bgMusic.paused) bgMusic.play().catch(() => {});
-    startTimer();
-    generateCards(sideLength * sideLength);
-}
-
-function startTimer() {
-    timerId = setInterval(() => {
-        if (!isPaused) {
-            timeLeft--;
-            updateTimerDisplay();
-            if (timeLeft <= 0) gameOver("Time's Up!");
-        }
-    }, 1000);
-}
-
-function updateTimerDisplay() {
-    const mins = Math.floor(timeLeft / 60);
-    const secs = timeLeft % 60;
-    timerDisplay.innerText = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-}
-
-function generateCards(count) {
-    const fruits = ['🍓', '🍑', '🍒', '🍉', '🍍', '🍎', '🍇', '🥝'].slice(0, count/2);
-    const gameSet = [...fruits, ...fruits].sort(() => Math.random() - 0.5);
-    gameSet.forEach(icon => {
-        const card = document.createElement('div');
-        card.className = 'memory-card';
-        card.dataset.fruit = icon;
-        card.innerHTML = `<div class="front-face">${icon}</div><div class="back-face"></div>`;
-        card.addEventListener('click', flipCard);
-        gameBoard.appendChild(card);
-    });
-}
-
-function flipCard() {
-    if (lockBoard || this === firstCard || isPaused) return;
-    if (!isMuted && bgMusic.paused) bgMusic.play().catch(() => {});
-    if (!isMuted) { clickSound.currentTime = 0; clickSound.play().catch(()=>{}); }
-    
-    this.classList.add('flip');
-    if (!hasFlippedCard) { hasFlippedCard = true; firstCard = this; return; }
-    
-    secondCard = this;
-    moves++;
-    movesDisplay.innerText = moves;
-    checkForMatch();
-}
-
-function checkForMatch() {
-    const isMatch = firstCard.dataset.fruit === secondCard.dataset.fruit;
-    if (isMatch) {
-        matchedPairs++;
-        streak++;
-        if (streak >= 2) {
-            updateStreakDisplay();
-            const rect = secondCard.getBoundingClientRect();
-            createBurst(rect.left + rect.width/2, rect.top + rect.height/2, '🔥', 'fire-particle');
-        }
-        resetBoard();
-        let cols = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--grid-cols'));
-        if (matchedPairs === (cols * cols) / 2) nextLevel();
-    } else {
-        streak = 0;
-        updateStreakDisplay();
-        if (moves >= moveLimit) {
-            setTimeout(() => gameOver("Out of Moves!"), 500);
-            return;
-        }
-        lockBoard = true;
-        setTimeout(() => {
-            firstCard.classList.remove('flip');
-            secondCard.classList.remove('flip');
-            resetBoard();
-        }, 800);
-    }
-}
-
-function updateStreakDisplay() {
-    if (streak >= 2) {
-        streakContainer.style.display = 'block';
-        streakCountDisplay.innerText = streak;
-        movesDisplay.classList.add('streak-active');
-    } else {
-        streakContainer.style.display = 'none';
-        movesDisplay.classList.remove('streak-active');
-    }
-}
-
-function resetBoard() { [hasFlippedCard, lockBoard] = [false, false]; [firstCard, secondCard] = [null, null]; }
-
-function nextLevel() {
-    clearInterval(timerId);
-    document.getElementById('victory-overlay').style.display = 'flex';
-    if (!isMuted) victorySound.play();
-    setTimeout(() => { level++; initLevel(); }, 2500);
-}
-
-function gameOver(reason) {
-    clearInterval(timerId);
-    if (!isMuted) gameoverSound.play();
-    document.getElementById('game-over-text').innerText = `🎀 ${reason} 🎀`;
-    document.getElementById('game-over-screen').style.display = 'flex';
-}
-
-function togglePause() {
-    isPaused = !isPaused;
-    document.getElementById('pause-overlay').style.display = isPaused ? 'flex' : 'none';
-    document.getElementById('pause-btn').innerText = isPaused ? '▶' : '⏸';
-    if (!isPaused) document.getElementById('level-menu').style.display = 'none';
-}
-
-function showLevelMenu() {
-    isPaused = true;
-    document.getElementById('pause-overlay').style.display = 'none';
-    document.getElementById('level-menu').style.display = 'flex';
-    const list = document.getElementById('level-list');
-    list.innerHTML = '';
-    for(let i=1; i<=10; i++) {
-        const b = document.createElement('button');
-        b.innerText = i; b.className = 'nav-btn';
-        b.style.padding = "15px";
-        b.onclick = () => { level = i; initLevel(); };
-        list.appendChild(b);
-    }
-}
-
-function closeMenu() {
-    document.getElementById('level-menu').style.display = 'none';
-    document.getElementById('pause-overlay').style.display = 'flex';
-}
-
-function toggleMute() { isMuted = !isMuted; bgMusic.muted = isMuted; }
+function updateCoins(){coinsDisplay.innerText=coins;}
